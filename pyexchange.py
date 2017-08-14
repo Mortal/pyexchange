@@ -10,7 +10,7 @@ from exchangelib import (
     # Build, Version
 )
 import exchangelib
-from exchangelib.services import GetFolder
+from exchangelib.services import GetFolder, ResolveNames
 
 from exchangelib.util import (
     get_xml_attr, ElementType, xml_to_str,
@@ -32,14 +32,10 @@ from exchangelib.ewsdatetime import EWSDateTime, EWSTimeZone
 # credentials = Credentials(username='UNI\\au306325', password=pw)
 
 
-class ResolveNames(exchangelib.services.ResolveNames):
+class ResolveNamesMultiple(ResolveNames):
     def _get_element_container(self, message, name=None):
         assert isinstance(message, ElementType)
-        # ResponseClass: See
-        # http://msdn.microsoft.com/en-us/library/aa566424(v=EXCHG.140).aspx
         response_class = message.get('ResponseClass')
-        # ResponseCode, MessageText: See
-        # http://msdn.microsoft.com/en-us/library/aa580757(v=EXCHG.140).aspx
         response_code = get_xml_attr(message, '{%s}ResponseCode' % MNS)
         msg_text = get_xml_attr(message, '{%s}MessageText' % MNS)
         msg_xml = message.find('{%s}MessageXml' % MNS)
@@ -72,7 +68,7 @@ class ResolveNames(exchangelib.services.ResolveNames):
             return e
 
 
-# r = ResolveNames(protocol=account.protocol)
+# r = ResolveNamesMultiple(protocol=account.protocol)
 # r.account = account
 # results = list(r.call(['5335-327']))
 # results = [
@@ -84,24 +80,24 @@ class ResolveNames(exchangelib.services.ResolveNames):
 # print(name, email)
 
 
-# <messages:GetFolder
+# <m:GetFolder
 # xmlns="http://schemas.microsoft.com/exchange/services/2006/types">
-# <messages:FolderShape>
-# <BaseShape>Default</BaseShape>
-# <AdditionalProperties>
-# <FieldURI FieldURI="folder:FolderClass"/>
-# <FieldURI FieldURI="folder:ParentFolderId"/>
-# </AdditionalProperties>
-# </messages:FolderShape>
-# <messages:FolderIds>
-# <DistinguishedFolderId Id="calendar">
-# <Mailbox>
-# <EmailAddress>
-# rmbx.5335327.CS@uni.au.dk</EmailAddress>
-# </Mailbox>
-# </DistinguishedFolderId>
-# </messages:FolderIds>
-# </messages:GetFolder>
+# <m:FolderShape>
+# <t:BaseShape>Default</t:BaseShape>
+# <t:AdditionalProperties>
+# <t:FieldURI FieldURI="folder:FolderClass"/>
+# <t:FieldURI FieldURI="folder:ParentFolderId"/>
+# </t:AdditionalProperties>
+# </m:FolderShape>
+# <m:FolderIds>
+# <t:DistinguishedFolderId Id="calendar">
+# <t:Mailbox>
+# <t:EmailAddress>
+# rmbx.5335327.CS@uni.au.dk</t:EmailAddress>
+# </t:Mailbox>
+# </t:DistinguishedFolderId>
+# </m:FolderIds>
+# </m:GetFolder>
 
 #    @classmethod
 #    def get_distinguished(cls, account, shape=IdOnly):
@@ -123,7 +119,7 @@ class ResolveNames(exchangelib.services.ResolveNames):
 #        return folders[0]
 
 
-class A(DistinguishedFolderId):
+class DistinguishedFolderOfMailbox(DistinguishedFolderId):
     def to_xml(self, version):
         elem = super().to_xml(version)
         elem.append(self.mailbox.to_xml(version))
@@ -138,7 +134,7 @@ class A(DistinguishedFolderId):
 #     FieldPath(field=f)
 #     for f in Calendar.supported_fields(version=account.version)]
 #
-# a = A(id='calendar')
+# a = DistinguishedFolderOfMailbox(id='calendar')
 # a.mailbox = Mailbox(email_address=email)
 #
 # for elem in GetFolder(account=account).call(
@@ -216,7 +212,7 @@ class ExchangeCalendar:
             return self._cached_calendar_email_address
         except AttributeError:
             pass
-        r = ResolveNames(protocol=self.ews_account.protocol)
+        r = ResolveNamesMultiple(protocol=self.ews_account.protocol)
         r.account = self.ews_account
         results = list(r.call([self.calendar_name]))
         if len(results) != 1:
@@ -244,7 +240,7 @@ class ExchangeCalendar:
             FieldPath(field=f)
             for f in Calendar.supported_fields(version=account.version)]
 
-        a = A(id='calendar')
+        a = DistinguishedFolderOfMailbox(id='calendar')
         a.mailbox = Mailbox(email_address=self.calendar_email_address)
 
         for elem in GetFolder(account=account).call(
