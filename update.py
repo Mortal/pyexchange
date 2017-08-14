@@ -46,7 +46,7 @@ def main():
 
     while True:
         update(args)
-        time.sleep(60)
+        time.sleep(600)
 
 
 if __name__ == '__main__':
