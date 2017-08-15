@@ -119,13 +119,13 @@ class ResolveNamesMultiple(ResolveNames):
 #        return folders[0]
 
 
-class DistinguishedFolderOfMailbox(DistinguishedFolderId):
-    def to_xml(self, version):
-        elem = super().to_xml(version)
-        elem.append(self.mailbox.to_xml(version))
-        return elem
-
-    folder_id = 1
+# class DistinguishedFolderOfMailbox(DistinguishedFolderId):
+#     def to_xml(self, version):
+#         elem = super().to_xml(version)
+#         elem.append(self.mailbox.to_xml(version))
+#         return elem
+#
+#     folder_id = 1
 
 
 # folders = []
@@ -183,16 +183,19 @@ class ExchangeCalendar:
         self.calendar_name = calendar_name
 
     @property
+    def ews_credentials(self):
+        return Credentials(username=self.username,
+                           password=self.password)
+
+    @property
     def ews_account(self):
         try:
             return self._cached_ews_account
         except AttributeError:
             pass
-        credentials = Credentials(username=self.username,
-                                  password=self.password)
         self._cached_ews_account = Account(
             primary_smtp_address=self.email_address,
-            credentials=credentials,
+            credentials=self.ews_credentials,
             autodiscover=True, access_type=DELEGATE)
         return self._cached_ews_account
         # TODO: No autodiscover:
@@ -200,7 +203,7 @@ class ExchangeCalendar:
         # ews_auth_type = account.protocol.auth_type
         # primary_smtp_address = account.primary_smtp_address
         # config = Configuration(service_endpoint=ews_url,
-        # credentials=credentials, auth_type=ews_auth_type)
+        # credentials=self.ews_credentials, auth_type=ews_auth_type)
         # account = Account(
         #     primary_smtp_address=primary_smtp_address, config=config,
         #     autodiscover=False, access_type=DELEGATE
@@ -234,27 +237,10 @@ class ExchangeCalendar:
         except AttributeError:
             pass
 
-        folders = []
-        account = self.ews_account
-        additional_fields = [
-            FieldPath(field=f)
-            for f in Calendar.supported_fields(version=account.version)]
-
-        a = DistinguishedFolderOfMailbox(id='calendar')
-        a.mailbox = Mailbox(email_address=self.calendar_email_address)
-
-        for elem in GetFolder(account=account).call(
-            folders=[a],
-            additional_fields=additional_fields,
-            shape=IdOnly
-        ):
-            folder = Calendar.from_xml(elem=elem, account=account)
-            folder.account = account
-            folders.append(folder)
-        if len(folders) != 1:
-            raise ValueError("Got %r results, not 1" % len(folders))
-        folder, = folders
-        self._cached_ews_calendar = folder
+        account = Account(primary_smtp_address=self.calendar_email_address,
+                          credentials=self.ews_credentials,
+                          autodiscover=True, access_type=DELEGATE)
+        self._cached_ews_calendar = account.calendar
         return self._cached_ews_calendar
 
     def items_for_date(self, date):
