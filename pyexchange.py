@@ -32,40 +32,40 @@ from exchangelib.ewsdatetime import EWSDateTime, EWSTimeZone
 # credentials = Credentials(username='UNI\\au306325', password=pw)
 
 
-class ResolveNamesMultiple(ResolveNames):
-    def _get_element_container(self, message, name=None):
-        assert isinstance(message, ElementType)
-        response_class = message.get('ResponseClass')
-        response_code = get_xml_attr(message, '{%s}ResponseCode' % MNS)
-        msg_text = get_xml_attr(message, '{%s}MessageText' % MNS)
-        msg_xml = message.find('{%s}MessageXml' % MNS)
-        if response_code == 'ErrorNameResolutionMultipleResults':
-            container = message.find(name)
-            return container
-        if response_class == 'Success' and response_code == 'NoError':
-            if not name:
-                return True
-            container = message.find(name)
-            if container is None:
-                raise TransportError('No %s elements in ResponseMessage (%s)' %
-                                     (name, xml_to_str(message)))
-            return container
-        if response_code == 'NoError':
-            return True
-        # Raise any non-acceptable errors in the container, or return the
-        # container or the acceptable exception instance
-        if response_class == 'Warning':
-            try:
-                return self._raise_errors(code=response_code, text=msg_text,
-                                          msg_xml=msg_xml)
-            except self.WARNINGS_TO_CATCH_IN_RESPONSE as e:
-                return e
-        # rspclass == 'Error', or 'Success' and not 'NoError'
-        try:
-            return self._raise_errors(code=response_code, text=msg_text,
-                                      msg_xml=msg_xml)
-        except self.ERRORS_TO_CATCH_IN_RESPONSE as e:
-            return e
+# class ResolveNamesMultiple(ResolveNames):
+#     def _get_element_container(self, message, name=None):
+#         assert isinstance(message, ElementType)
+#         response_class = message.get('ResponseClass')
+#         response_code = get_xml_attr(message, '{%s}ResponseCode' % MNS)
+#         msg_text = get_xml_attr(message, '{%s}MessageText' % MNS)
+#         msg_xml = message.find('{%s}MessageXml' % MNS)
+#         if response_code == 'ErrorNameResolutionMultipleResults':
+#             container = message.find(name)
+#             return container
+#         if response_class == 'Success' and response_code == 'NoError':
+#             if not name:
+#                 return True
+#             container = message.find(name)
+#             if container is None:
+#                 raise TransportError('No %s elements in ResponseMessage (%s)' %
+#                                      (name, xml_to_str(message)))
+#             return container
+#         if response_code == 'NoError':
+#             return True
+#         # Raise any non-acceptable errors in the container, or return the
+#         # container or the acceptable exception instance
+#         if response_class == 'Warning':
+#             try:
+#                 return self._raise_errors(code=response_code, text=msg_text,
+#                                           msg_xml=msg_xml)
+#             except self.WARNINGS_TO_CATCH_IN_RESPONSE as e:
+#                 return e
+#         # rspclass == 'Error', or 'Success' and not 'NoError'
+#         try:
+#             return self._raise_errors(code=response_code, text=msg_text,
+#                                       msg_xml=msg_xml)
+#         except self.ERRORS_TO_CATCH_IN_RESPONSE as e:
+#             return e
 
 
 # r = ResolveNamesMultiple(protocol=account.protocol)
@@ -215,18 +215,16 @@ class ExchangeCalendar:
             return self._cached_calendar_email_address
         except AttributeError:
             pass
-        r = ResolveNamesMultiple(protocol=self.ews_account.protocol)
+        r = ResolveNames(protocol=self.ews_account.protocol)
         r.account = self.ews_account
-        results = list(r.call([self.calendar_name]))
-        if len(results) != 1:
-            raise ValueError("Got %r results for %r" %
-                             (len(results), self.calendar_name))
-        results = [
-            (mbox.find('{%s}Name' % TNS).text,
-             mbox.find('{%s}EmailAddress' % TNS).text)
-            for r in results
-            for mbox in [r.find('{%s}Mailbox' % TNS)]]
-        (name, email), = results
+        try:
+            result, = list(r.call([self.calendar_name]))
+        except exchangelib.errors.ErrorNameResolutionMultipleResults:
+            raise ValueError("Got multiple results for %r" %
+                             self.calendar_name)
+        mbox = result.find('{%s}Mailbox' % TNS)
+        # name = mbox.find('{%s}Name' % TNS).text
+        email = mbox.find('{%s}EmailAddress' % TNS).text
         self._cached_calendar_email_address = email
         return email
 
