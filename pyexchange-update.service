@@ -6,6 +6,8 @@ User=rav
 EnvironmentFile=/home/rav/codes/pyexchange/env.txt
 WorkingDirectory=/home/rav/codes/pyexchange
 ExecStart=/usr/bin/python update.py -erav@cs.au.dk -uau306325@uni.au.dk -penv:EWS_PASSWORD -c dummy
+Restart=on-failure
+RestartSec=5min
 
 [Install]
 WantedBy=multi-user.target
