@@ -3,21 +3,10 @@ import collections
 import datetime
 import subprocess
 
-from exchangelib import (
-    DELEGATE, Account, Credentials,
-)
-import exchangelib
-from exchangelib.services import GetFolder, ResolveNames
-
-from exchangelib.util import (
-    get_xml_attr, ElementType, xml_to_str,
-)
-from exchangelib.transport import MNS, TNS
-from exchangelib.errors import TransportError
-from exchangelib.items import IdOnly
-from exchangelib.fields import FieldPath
-from exchangelib.folders import DistinguishedFolderId, Calendar
-from exchangelib.properties import Mailbox
+from exchangelib import DELEGATE, Account, Credentials
+from exchangelib.errors import ErrorNameResolutionMultipleResults
+from exchangelib.services import ResolveNames
+from exchangelib.transport import TNS
 from exchangelib.ewsdatetime import EWSDateTime, EWSTimeZone
 
 
@@ -68,7 +57,7 @@ class ExchangeCalendar:
         r.account = self.ews_account
         try:
             result, = list(r.call([self.calendar_name]))
-        except exchangelib.errors.ErrorNameResolutionMultipleResults:
+        except ErrorNameResolutionMultipleResults:
             raise ValueError("Got multiple results for %r" %
                              self.calendar_name)
         mbox = result.find('{%s}Mailbox' % TNS)
